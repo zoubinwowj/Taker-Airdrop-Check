@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OKX TAKER Airdrop Checker v3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen p-4 md:p-8 flex items-center justify-center">
+    <div class="max-w-5xl w-full mx-auto space-y-8">
+        <!-- Header -->
+        <header class="text-center">
+            <h1 class="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 mb-2">
+                TAKER 空投工具箱
+            </h1>
+            <p class="text-gray-400 text-lg">批量查询空投资格 & 区块链浏览器快捷工具</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Main Checker -->
+            <div class="lg:col-span-2 bg-gray-800 rounded-2xl shadow-2xl p-6 space-y-6 border border-gray-700">
+                <h2 class="text-2xl font-semibold text-emerald-400 mb-4 flex items-center">
+                    <i class="fas fa-search mr-3"></i>空投资格查询
+                </h2>
+
+                <!-- Input Section -->
+                <div class="space-y-4">
+                    <div>
+                        <label for="addresses" class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-wallet mr-2"></i>输入钱包地址 (每行一个):
+                        </label>
+                        <textarea
+                            id="addresses"
+                            rows="8"
+                            class="w-full p-4 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono text-sm transition-colors"
+                            placeholder="示例：\n0x4aC8334b0A5e8459712cae5766DE864999aD17E5\n0x1234..."
+                        ></textarea>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-4">
+                        <!-- Delay Setting -->
+                        <div class="flex items-center space-x-2 bg-gray-700 p-2 rounded-lg">
+                            <i class="fas fa-clock text-gray-400"></i>
+                            <label class="text-sm text-gray-300">
+                                查询延迟:
+                                <input
+                                    type="number"
+                                    id="delay"
+                                    value="2000"
+                                    min="1000"
+                                    class="w-20 ml-2 p-1 border border-gray-600 rounded-md focus:ring-emerald-500 focus:border-emerald-500 bg-gray-800 text-white"
+                                >
+                                <span class="text-gray-400 text-sm">ms</span>
+                            </label>
+                        </div>
+
+                        <!-- Clear Button -->
+                        <button
+                            onclick="clearResults()"
+                            class="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 text-sm transition duration-150"
+                        >
+                            <i class="fas fa-eraser"></i>
+                            <span>清空</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button
+                    onclick="checkAirdrops()"
+                    class="w-full py-3 px-4 bg-emerald-600 rounded-lg font-semibold text-white hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition duration-150 flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-play-circle"></i>
+                    <span>开始查询</span>
+                </button>
+
+                <!-- Progress Bar -->
+                <div id="progress" class="mt-6 hidden">
+                    <div class="flex justify-between text-sm text-gray-400 mb-2">
+                        <span>查询进度</span>
+                        <span id="progress-text">0/0</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div id="progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="results" class="mt-6">
+                    <!-- Results will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Right Column: Utility Tools -->
+            <div class="lg:col-span-1 space-y-8">
+                <!-- Blockchain Explorer Link Generator -->
+                <div class="bg-gray-800 rounded-2xl shadow-2xl p-6 space-y-4 border border-gray-700">
+                    <h2 class="text-2xl font-semibold text-cyan-400 mb-4 flex items-center">
+                        <i class="fas fa-link mr-3"></i>区块链浏览器快捷入口
+                    </h2>
+                    <div>
+                        <label for="explorerAddressInput" class="block text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-address-card mr-2"></i>输入钱包地址:
+                        </label>
+                        <input
+                            type="text"
+                            id="explorerAddressInput"
+                            class="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 font-mono text-sm transition-colors"
+                            placeholder="0x..."
+                        >
+                    </div>
+                    <div class="flex space-x-2">
+                        <button
+                            onclick="generateExplorerLinks()"
+                            class="flex-1 py-2 px-4 bg-cyan-600 hover:bg-cyan-700 rounded-lg text-white text-sm transition duration-150 flex items-center justify-center space-x-2"
+                        >
+                            <i class="fas fa-external-link-alt"></i>
+                            <span>生成链接</span>
+                        </button>
+                        <button
+                            onclick="clearExplorerAddress()"
+                            class="flex-1 py-2 px-4 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 text-sm transition duration-150 flex items-center justify-center space-x-2"
+                        >
+                            <i class="fas fa-times"></i>
+                            <span>清空</span>
+                        </button>
+                    </div>
+                    <div id="explorerLinksResult" class="space-y-2 text-sm">
+                        <!-- Links will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="text-center text-gray-500 text-sm mt-8">
+            <p class="mb-2">设置合理延迟，避免频繁查询</p>
+            <div class="flex justify-center space-x-4">
+                <a href="https://github.com/zoubinwowj" target="_blank" rel="noopener noreferrer"
+                   class="text-gray-500 hover:text-gray-300 transition-colors">
+                    <i class="fab fa-github text-lg"></i>
+                    <span class="ml-1">Github</span>
+                </a>
+                <a href="https://x.com/zoubinwowj" target="_blank" rel="noopener noreferrer"
+                   class="text-gray-500 hover:text-gray-300 transition-colors">
+                    <i class="fab fa-twitter text-lg"></i>
+                    <span class="ml-1">Twitter</span>
+                </a>
+            </div>
+        </footer>
+    </div>
+    <script>
+        // Main Checker Functions (unchanged from previous version, only style related changes)
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function clearResults() {
+            document.getElementById('addresses').value = '';
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('progress').classList.add('hidden');
+        }
+
+        function getKey(r, u) {
+            const hashArray = CryptoJS.SHA256(r).toString();
+            let result = '';
+            for (let p = 0; p < 32; p++) {
+                const index = ((Math.floor(u / 1000 / 600) % 32) + ((Math.floor(u / 1000 / 3600) % 32) + p) * p) % 32;
+                result += hashArray[index];
+            }
+            return result;
+        }
+
+        function generateHmacSha256Base64(key, message) {
+            const hmac = CryptoJS.HmacSHA256(message, key);
+            return CryptoJS.enc.Base64.stringify(hmac);
+        }
+
+        async function checkSingleAddress(address) {
+            try {
+                const timestamp = Date.now();
+                const uuidKey = uuid.v4();
+
+                const jsonData = {
+                    queryId: [address.toLowerCase()],
+                    projId: 27
+                };
+
+                const jsonString = JSON.stringify(jsonData).replace(/\s/g, '');
+                const message = `/priapi/v2/wallet/airdrop/tokenCanGet${jsonString}`;
+                const key = getKey(uuidKey, timestamp + 5);
+                const hmacSign = generateHmacSha256Base64(key, message);
+
+                const headers = {
+                    'accept': 'application/json',
+                    'accept-language': 'zh-CN,zh;q=0.9',
+                    'app-type': 'web',
+                    'cache-control': 'no-cache',
+                    'content-type': 'application/json',
+                    'ok-timestamp': String(timestamp + 5),
+                    'ok-verify-sign': hmacSign,
+                    'ok-verify-token': uuidKey,
+                    'origin': 'https://web3.okx.com',
+                    'platform': 'web',
+                    'pragma': 'no-cache',
+                    'priority': 'u=1, i',
+                    'referer': 'https://web3.okx.com/zh-hans/airdrop-checker/taker',
+                    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+                    'x-cdn': 'https://web3.okx.com'
+                };
+
+                const response = await fetch(`https://web3.okx.com/priapi/v2/wallet/airdrop/tokenCanGet?t=${timestamp}`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify(jsonData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                if (data.code === 0 && data.data) {
+                    return {
+                        address: address,
+                        tokenAmount: data.data.tokenAmount || '0',
+                        success: true
+                    };
+                } else {
+                    throw new Error(data.msg || '查询失败');
+                }
+            } catch (error) {
+                console.error('查询错误:', error);
+                return {
+                    address: address,
+                    tokenAmount: `错误: ${error.message}`,
+                    success: false
+                };
+            }
+        }
+
+        async function checkAirdrops() {
+            const addressesText = document.getElementById('addresses').value;
+            const addresses = addressesText.split('\n').filter(addr => addr.trim());
+            const delay = parseInt(document.getElementById('delay').value) || 2000;
+            let totalAmount = 0;
+
+            if (addresses.length === 0) {
+                alert('请输入至少一个钱包地址');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            const progressDiv = document.getElementById('progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+
+            progressDiv.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = `0/${addresses.length}`;
+
+            resultsDiv.innerHTML = `
+                <div class="overflow-x-auto rounded-lg border border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">序号</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">钱包地址</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">TAKER 空投资格数量</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body" class="bg-gray-800 divide-y divide-gray-700">
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            const resultsBody = document.getElementById('results-body');
+
+            for (let i = 0; i < addresses.length; i++) {
+                const address = addresses[i].trim();
+                if (!address) continue;
+
+                const result = await checkSingleAddress(address);
+
+                const row = document.createElement('tr');
+                const displayAmount = result.success
+                    ? `${parseFloat(result.tokenAmount).toLocaleString()} TAKER`
+                    : result.tokenAmount;
+
+                const statusText = result.success ? '成功' : '失败';
+                const statusColorClass = result.success ? 'text-green-400' : 'text-red-400';
+
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        ${i + 1}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-white">
+                        ${result.address}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${result.success ? (parseFloat(result.tokenAmount) > 0 ? 'text-emerald-400 font-medium' : 'text-gray-400') : 'text-red-400'}">
+                        ${displayAmount}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm ${statusColorClass}">
+                        ${statusText}
+                    </td>
+                `;
+                resultsBody.appendChild(row);
+
+                const progress = ((i + 1) / addresses.length * 100).toFixed(0);
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${i + 1}/${addresses.length}`;
+
+                if (result.success && !isNaN(parseFloat(result.tokenAmount))) {
+                    totalAmount += parseFloat(result.tokenAmount);
+                }
+
+                if (i < addresses.length - 1) {
+                    await sleep(delay);
+                }
+            }
+
+            resultsDiv.insertAdjacentHTML('beforeend', `
+                <div class="mt-4 p-4 bg-gray-700 rounded-lg border border-gray-600">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-medium text-gray-300">总 TAKER 空投资格数量:</span>
+                        <span class="text-lg font-semibold text-emerald-400">${totalAmount.toLocaleString()} TAKER</span>
+                    </div>
+                </div>
+            `);
+        }
+
+        // New Utility Functions for Blockchain Explorer Links
+        function generateExplorerLinks() {
+            const addressInput = document.getElementById('explorerAddressInput');
+            const linksResultDiv = document.getElementById('explorerLinksResult');
+            const address = addressInput.value.trim();
+
+            linksResultDiv.innerHTML = ''; // Clear previous results
+
+            if (!address) {
+                linksResultDiv.innerHTML = '<p class="text-red-400">请输入一个钱包地址。</p>';
+                return;
+            }
+
+            // Basic address validation (0x prefix and length)
+            if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+                linksResultDiv.innerHTML = '<p class="text-red-400">请输入一个有效的以太坊兼容地址。</p>';
+                return;
+            }
+
+            const explorers = [
+                { name: 'Etherscan (ETH)', url: `https://etherscan.io/address/${address}` },
+                { name: 'BscScan (BSC)', url: `https://bscscan.com/address/${address}` },
+                { name: 'Polygonscan (Polygon)', url: `https://polygonscan.com/address/${address}` },
+                { name: 'Arbiscan (Arbitrum)', url: `https://arbiscan.io/address/${address}` },
+                { name: 'Optimism Etherscan (Optimism)', url: `https://optimistic.etherscan.io/address/${address}` },
+                { name: 'Snowtrace (Avalanche)', url: `https://snowtrace.io/address/${address}` },
+                { name: 'Fantomscan (Fantom)', url: `https://ftmscan.com/address/${address}` },
+                { name: 'Cronoscan (Cronos)', url: `https://cronoscan.com/address/${address}` },
+            ];
+
+            explorers.forEach(explorer => {
+                const linkElement = document.createElement('a');
+                linkElement.href = explorer.url;
+                linkElement.target = '_blank';
+                linkElement.rel = 'noopener noreferrer';
+                linkElement.className = 'block p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center space-x-2';
+                linkElement.innerHTML = `<i class="fas fa-external-link-alt text-cyan-400"></i><span>${explorer.name}</span>`;
+                linksResultDiv.appendChild(linkElement);
+            });
+        }
+
+        function clearExplorerAddress() {
+            document.getElementById('explorerAddressInput').value = '';
+            document.getElementById('explorerLinksResult').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
